@@ -2,6 +2,15 @@ from django.conf import settings
 from django.db import models
 from django.utils import timezone
 
+
+class PublishedManager(models.Manager):
+    # конкретно-прикладной менеджер
+    def get_queryset(self):
+        return (
+            super().get_queryset().filter(status=Post.Status.PUBLISHED)
+        )
+
+
 class Post(models.Model):
     # создание класса перечисления на основе Enum
     class Status(models.TextChoices):
@@ -24,6 +33,9 @@ class Post(models.Model):
         choices=Status.choices,
         default=Status.DRAFT
     )
+
+    objects = models.Manager()  # менеджер, применяемый по умолчанию
+    published = PublishedManager()  # конкретно-прикладной менеджер
 
     class Meta:
         # Сортировка, применяемая по умолчанию.
