@@ -1,10 +1,11 @@
-from django.shortcuts import render
+from django.shortcuts import render, get_object_or_404
 from django.http import HttpRequest, HttpResponse, Http404
 from django.core.paginator import Paginator, EmptyPage, PageNotAnInteger
 from django.core.mail import send_mail
-from django.shortcuts import get_object_or_404
 from django.views.decorators.http import require_POST
 from django.views.generic import ListView
+from django.db.models import Count
+from taggit.models import Tag
 from .models import Post
 from .forms import EmailPostForm, CommentForm
 
@@ -16,8 +17,14 @@ class PostListView(ListView):
     template_name = 'blog/post/list.html'
 
 
-def post_list(request: HttpRequest) -> HttpResponse:
+def post_list(request: HttpRequest, tag_slug=None) -> HttpResponse:
     post_list = Post.published.all()
+
+    # При введенном теге отображает только посты с этим тегом
+    tag = None
+    if tag_slug:
+        tag = get_object_or_404(Tag, slug=tag_slug)
+        post_list = post_list.filter(tags__in=[tag])
 
     # Постраничная разбивка с 2 постами на страницу
     paginator = Paginator(post_list, 2)
@@ -34,7 +41,10 @@ def post_list(request: HttpRequest) -> HttpResponse:
     return render(
         request,
         'blog/post/list.html',
-        {'posts': posts}
+        {
+            'posts': posts,
+            'tag': tag
+        }
     )
 
 
@@ -61,6 +71,19 @@ def post_detail(request: HttpRequest,
     # Форма для комментирования пользователями
     form = CommentForm()
 
+    # Список схожих постов
+    # 1. Извлекается список идентификаторов тегов текущего поста.
+    #    values_list() возвращает кортежи со значениями заданных полей; flat=True возвращает одиночные значения,
+    #    такие как [1, 2, 3, ...] а не [(1,), (2,), (3,), ...].
+    # 2. Берутся все посты, содержащие любой из этих тегов, за исключением текущего поста.
+    # 3.1. Применяется функция агрегирования Count(). Её работа - генерировать вычисляемое поле - same_tags,
+    #      которое содержит количество тегов, общих со всеми запрошенными тегами.
+    # 3.2. Результат упорядочивается по количеству общих тегов и по publish (в убывающем порядке).
+    #      Результат нарезается, чтобы получить только первые 4 поста.
+    post_tags_ids = post.tags.values_list('id', flat=True)
+    similar_posts = Post.published.filter(tags__in=post_tags_ids).exclude(id=post.id)
+    similar_posts = similar_posts.annotate(same_tags=Count('tags')).order_by('-same_tags', '-publish')[:4]
+
     return render(
         request,
         'blog/post/detail.html',
@@ -68,6 +91,7 @@ def post_detail(request: HttpRequest,
             'post': post,
             'comments': comments,
             'form': form,
+            'similar_posts': similar_posts,
         }
     )
 

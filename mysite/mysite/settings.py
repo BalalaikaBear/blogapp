@@ -48,6 +48,7 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
+    'taggit',
     'blog.apps.BlogConfig'  # Класс BlogConfig - это конфигурация приложения
 ]
 
