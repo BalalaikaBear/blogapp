@@ -41,14 +41,19 @@ EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
 
 # Application definition
 
+SITE_ID = 1
+
 INSTALLED_APPS = [
     'django.contrib.admin',
     'django.contrib.auth',
     'django.contrib.contenttypes',
     'django.contrib.sessions',
     'django.contrib.messages',
+    'django.contrib.sites',     # добавление
+    'django.contrib.sitemaps',  # карты сайта
+    'django.contrib.postgres',  # добавление дополнительного функционала базы данных PostgreSQL
     'django.contrib.staticfiles',
-    'taggit',
+    'taggit',  # добавление сторонней модели Tag
     'blog.apps.BlogConfig'  # Класс BlogConfig - это конфигурация приложения
 ]
 
@@ -88,8 +93,11 @@ WSGI_APPLICATION = 'mysite.wsgi.application'
 
 DATABASES = {
     'default': {
-        'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': BASE_DIR / 'db.sqlite3',
+        'ENGINE': 'django.db.backends.postgresql',
+        'NAME': config('DB_NAME'),
+        'USER': config('DB_USER'),
+        'PASSWORD': config('DB_PASSWORD'),
+        'HOST': config('DB_HOST'),
     }
 }
 
